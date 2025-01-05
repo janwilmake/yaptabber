@@ -35,11 +35,13 @@ class VoiceActivatedRecorder {
     this.isRecording = false;
     this.recordingStartTime = null;
     this.silenceTimer = null;
+    this.maxDurationTimer = null; // New timer for max duration
     this.audioRecorder = null;
     this.screenFFmpeg = null;
     this.webcamFFmpeg = null;
     this.currentRecordingPath = null;
     this.deviceIndexes = null;
+    this.MAX_DURATION = 600000; // 10 minutes in milliseconds
   }
 
   async setupRecorder() {
@@ -223,7 +225,7 @@ class VoiceActivatedRecorder {
       "-f",
       "avfoundation",
       "-i",
-      "none:0", // Use default audio input
+      "none:0",
       "-c:a",
       "pcm_s16le",
       "-ar",
@@ -231,6 +233,19 @@ class VoiceActivatedRecorder {
       "-y",
       audioOutputPath,
     ]);
+
+    // Set up max duration timer
+    this.maxDurationTimer = setTimeout(async () => {
+      console.log(
+        "Maximum duration reached (10 minutes) - Splitting recording",
+      );
+      const currentPath = this.currentRecordingPath; // Store current path
+      await this.stopRecording(true); // True indicates we want to continue recording
+      if (this.isVoiceActive()) {
+        // Check if we should start a new recording
+        this.startRecording();
+      }
+    }, this.MAX_DURATION);
 
     // Log any FFmpeg errors
     const handleFFmpegError = (name, data) => {
@@ -248,13 +263,19 @@ class VoiceActivatedRecorder {
     );
   }
 
-  async stopRecording() {
+  async stopRecording(continueRecording = false) {
     if (!this.isRecording) return;
 
     const duration = (Date.now() - this.recordingStartTime) / 1000;
     console.log("Stopping recording... Duration:", duration, "seconds");
 
-    if (duration < 15) {
+    // Clear the max duration timer
+    if (this.maxDurationTimer) {
+      clearTimeout(this.maxDurationTimer);
+      this.maxDurationTimer = null;
+    }
+
+    if (duration < 15 && !continueRecording) {
       console.log("Recording too short, discarding...");
       this.cleanup();
       return;
@@ -266,7 +287,6 @@ class VoiceActivatedRecorder {
       if (!process) return;
 
       return new Promise((resolve) => {
-        // Set a timeout to force kill if graceful shutdown fails
         const forceKillTimeout = setTimeout(() => {
           console.log(`Force killing ${name} process after timeout...`);
           try {
@@ -275,9 +295,8 @@ class VoiceActivatedRecorder {
             console.error(`Error force killing ${name}:`, error);
           }
           resolve();
-        }, 10000); // Increased timeout to 10 seconds
+        }, 10000);
 
-        // Try graceful shutdown first
         try {
           console.log(`Attempting graceful shutdown of ${name}...`);
           process.stdin.write("q");
@@ -293,7 +312,6 @@ class VoiceActivatedRecorder {
           }
         }
 
-        // Listen for process exit
         process.on("close", (code) => {
           clearTimeout(forceKillTimeout);
           console.log(`${name} process closed with code ${code}`);
@@ -303,8 +321,6 @@ class VoiceActivatedRecorder {
     };
 
     try {
-      // Stop all processes and wait for them to complete
-      console.log("Stopping all recording processes...");
       await Promise.all([
         stopProcess(this.screenFFmpeg, "screen"),
         stopProcess(this.webcamFFmpeg, "webcam"),
@@ -312,22 +328,36 @@ class VoiceActivatedRecorder {
       ]);
 
       console.log("All processes stopped, waiting before upload...");
-
-      // Add a small delay to ensure files are fully written
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Verify files exist before upload
       const files = await fs.readdir(this.currentRecordingPath);
       console.log("Files ready for upload:", files);
 
-      // Upload to S3
       const timestamp = new Date().toISOString();
       await this.uploadDirectory(this.currentRecordingPath, timestamp);
       console.log("Upload completed successfully");
     } catch (error) {
       console.error("Error during stop/upload process:", error);
     } finally {
-      this.cleanup();
+      if (!continueRecording) {
+        this.cleanup();
+      } else {
+        // Partial cleanup - reset recording-specific variables but keep the recorder running
+        this.isRecording = false;
+        this.recordingStartTime = null;
+        this.screenFFmpeg = null;
+        this.webcamFFmpeg = null;
+        this.audioFFmpeg = null;
+        if (this.currentRecordingPath) {
+          fs.rm(this.currentRecordingPath, {
+            recursive: true,
+            force: true,
+          }).catch((error) =>
+            console.error("Error cleaning up directory:", error),
+          );
+          this.currentRecordingPath = null;
+        }
+      }
     }
   }
 
@@ -520,6 +550,12 @@ class VoiceActivatedRecorder {
     if (this.audioRecorder) {
       this.audioRecorder.stop();
     }
+  }
+
+  isVoiceActive() {
+    // Helper method to check if voice is still active
+    // This can be enhanced based on your actual voice detection logic
+    return !this.silenceTimer;
   }
 }
 
