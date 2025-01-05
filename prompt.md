@@ -2,7 +2,7 @@ i guess there's also a lot of merit in creating a least-friction way to creating
 
 since this program can measure the db level 24/7, we can simply activate the video whenever you talk, and stop it 5 seconds after you stop talking.
 
-let's rewrite this cli so it:
+Let's rewrite this cli so it:
 
 - makes no screenshot or video screenshot
 - when audio level goes above 50db, starts recording quality audio, record screen, and node-webcam.
