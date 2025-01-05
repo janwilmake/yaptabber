@@ -10,6 +10,4 @@ How to use:
 
 Then go to yaptabber.com (or use index.html) and view your synced audio/video/screen recordings :D
 
-```Happy Yapping!
-
-```
+~~ Happy Yapping!
