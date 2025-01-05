@@ -8,6 +8,6 @@ How to use:
 2. `brew install sox`
 3. `npx yaptabber --endpoint https://yours3endpoint.com --key S3_KEY --secret S3_SECRET --region S3_REGION`
 
-Then go to yaptabber.com (or use index.html) and view your synced audio/video/screen recordings :D
+Then go to https://yaptabber.com/admin (or use admin.html) and view your synced audio/video/screen recordings :D
 
 ~~ Happy Yapping!
