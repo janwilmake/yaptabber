@@ -11,3 +11,11 @@ How to use:
 Then go to https://yaptabber.com/admin (or use admin.html) and view your synced audio/video/screen recordings :D
 
 ~~ Happy Yapping!
+
+# Ideas for improvement
+
+- re-implement the client in Swift for maximum efficiency and reducing data over the line. It now costs more energy than safari or vscode which is terrible. After this, instead of sending just when I talk, send everything and process better on the backend.
+- also collect browsing history as additional metadata
+- also collect mouse position, clicks, keystrokes
+- also collect the exact date time when the media starts/ends (but just use a single ID for the filename)
+- in the backend, create a transcript for each audio. make this searchable in the layout
