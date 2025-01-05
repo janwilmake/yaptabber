@@ -1,6 +1,6 @@
 {
   "name": "yaptabber",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Yaptabber uploads your screen, video, and mic to your s3 whenever there's sound detected",
   "main": "index.js",
   "bin": {
